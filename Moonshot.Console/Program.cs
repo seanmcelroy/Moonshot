@@ -35,7 +35,7 @@ namespace Moonshot.Console
                     var verb = (dynamic)Things[inputParts[0].ToLowerInvariant()];
                     if (verb != null && verb.verb)
                     {
-                        var result = verb.impl.Main(inputParts.Skip(1).ToList());
+                        var result = verb.impl(inputParts.Skip(1).ToList());
                         if (result is bool && result == true) return;
                     }
                     else
@@ -86,7 +86,7 @@ namespace Moonshot.Console
 
                             program.impl = new AsmHelper(assembly).GetMethodInvoker("Script.Main", new object());
 
-                            Console.WriteLine("Program {0}(#{1}) created.");
+                            Console.WriteLine("Program {0}({1}) created.", s[0], program.id);
 
                             Things.Add(program.name.ToLowerInvariant(), program);
                             return program;

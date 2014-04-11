@@ -26,9 +26,7 @@
         public Thing()
         {
             var random = new Random(Environment.TickCount);
-            long id10 = 0;
-            for (var n = 0; n < 1257; n++)
-                id10 += random.Next(0, 2147483647);
+            var id10 = random.NextLong(1000,2176782335);
 
             // 32 is the worst cast buffer size for base 2 and int.MaxValue
             int i = 32;
@@ -44,9 +42,11 @@
 
             var result = new char[32 - i];
             Array.Copy(buffer, i, result, 0, 32 - i);
+            var id = new string(result);
+            id = "#" + id.PadLeft(6, '0');
 
-            _properties["id"] = result;
-            _properties["owner"] = result; // I own myself.
+            _properties["id"] = id;
+            _properties["owner"] = id; // I own myself.
         }
 
         protected Thing(SerializationInfo info, StreamingContext context)
@@ -55,7 +55,7 @@
                 _properties.Add(property.Name, property.Value);
         }
 
-        public override bool TryGetMember(GetMemberBinder binder, out object result)
+        public override sealed bool TryGetMember(GetMemberBinder binder, out object result)
         {
             if (_writeonlyProperties.Contains(binder.Name.ToLowerInvariant()))
             {
@@ -69,7 +69,7 @@
             return true;
         }
 
-        public override bool TrySetMember(SetMemberBinder binder, object value)
+        public override sealed bool TrySetMember(SetMemberBinder binder, object value)
         {
             if (_readonlyProperties.Contains(binder.Name.ToLowerInvariant())) return false;
             _properties[binder.Name.ToLowerInvariant()] = value;
