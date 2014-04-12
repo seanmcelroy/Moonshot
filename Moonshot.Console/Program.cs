@@ -3,6 +3,7 @@ namespace Moonshot.Console
 {
     using System;
     using System.Collections.Generic;
+    using System.Dynamic;
     using System.Linq;
     using System.Reflection;
     using csscript;
@@ -32,11 +33,11 @@ namespace Moonshot.Console
 
                 if (Things.ContainsKey(inputParts[0].ToLowerInvariant()))
                 {
-                    var verb = (dynamic)Things[inputParts[0].ToLowerInvariant()];
-                    if (verb != null && verb.verb)
+                    var verb = Things[inputParts[0].ToLowerInvariant()] as Moonshot.Common.Program;
+                    if (verb != null)
                     {
-                        var result = verb.impl(inputParts.Skip(1).ToList());
-                        if (result is bool && result == true) return;
+                        var result = verb.Implementation.Invoke(inputParts.Skip(1).ToList());
+                        if (result is bool && (bool)result) return;
                     }
                     else
                         Console.WriteLine("Huh?");
@@ -56,10 +57,9 @@ namespace Moonshot.Console
                         {
                             var body = s.Skip(1).Aggregate((c, n) => c + ' ' + n);
 
-                            dynamic program = new Thing();
-                            program.name = s[0];
-                            program.body = body;
-                            program.verb = true;
+                            var program = new Moonshot.Common.Program();
+                            ((dynamic)program).name = s[0];
+                            ((dynamic)program).body = body;
 
                             Assembly assembly;
                             try
@@ -84,11 +84,12 @@ namespace Moonshot.Console
                                 return null;
                             }
 
-                            program.impl = new AsmHelper(assembly).GetMethodInvoker("Script.Main", new object());
+                            var fid = new AsmHelper(assembly).GetMethodInvoker("Script.Main", new object());
+                            program.Implementation = (IList<string> sx) => { return fid.Invoke(null, sx); }; //new Func<IList<string>,object>((IList<string> sx) => fid.Invoke(null, sx));
 
-                            Console.WriteLine("Program {0}({1}) created.", s[0], program.id);
+                            Console.WriteLine("Program {0}({1}) created.", s[0], program.Id);
 
-                            Things.Add(program.name.ToLowerInvariant(), program);
+                            Things.Add(s[0].ToLowerInvariant(), program);
                             return program;
                         }));
 

@@ -8,7 +8,7 @@
     using System.Security.Permissions;
 
     [Serializable]
-    public class Thing : DynamicObject, ISerializable
+    public class Thing : DynamicObject, ISerializable, IDynamicMetaObjectProvider
     {
         private static readonly char[] Base36Characters = 
                                                         {
@@ -20,6 +20,14 @@
         private static readonly string[] _readonlyProperties = { "id" };
         private static readonly string[] _serializeSkipProperties = { "impl" };
         private static readonly string[] _writeonlyProperties = { "pass" };
+
+        public virtual string Id
+        {
+            get
+            {
+                return (string)_properties["id"];
+            }
+        }
 
         private readonly Dictionary<string, object> _properties = new Dictionary<string, object>(10);
 
@@ -53,6 +61,11 @@
         {
             foreach (var property in info)
                 _properties.Add(property.Name, property.Value);
+        }
+
+        public override IEnumerable<string> GetDynamicMemberNames()
+        {
+            return _properties.Keys;
         }
 
         public override sealed bool TryGetMember(GetMemberBinder binder, out object result)
