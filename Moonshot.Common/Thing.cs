@@ -3,9 +3,14 @@
     using System;
     using System.Collections.Generic;
     using System.Dynamic;
+    using System.IO;
     using System.Linq;
     using System.Runtime.Serialization;
     using System.Security.Permissions;
+    using System.Text;
+    using System.Xml.Serialization;
+
+    using Newtonsoft.Json.Linq;
 
     [Serializable]
     public class Thing : DynamicObject, ISerializable, IDynamicMetaObjectProvider
@@ -20,7 +25,7 @@
         private static readonly string[] _readonlyProperties = { "id" };
         private static readonly string[] _serializeSkipProperties = { "impl" };
         private static readonly string[] _writeonlyProperties = { "pass" };
-
+        
         public virtual string Id
         {
             get
@@ -30,6 +35,13 @@
         }
 
         private readonly Dictionary<string, object> _properties = new Dictionary<string, object>(10);
+        private readonly Dictionary<string, string> _propdirs = new Dictionary<string, string>(10);
+
+        public Thing(string id)
+        {
+            _properties["id"] = id;
+            _properties["owner"] = id; // I own myself.
+        }
 
         public Thing()
         {
@@ -59,8 +71,15 @@
 
         protected Thing(SerializationInfo info, StreamingContext context)
         {
+            var propdirsSerializer = new XmlSerializer(typeof(PropDirSerializationItem[]), new XmlRootAttribute() { ElementName = "propdir" });
+
             foreach (var property in info)
-                _properties.Add(property.Name, property.Value);
+            {
+                if (property.Name == "_propdirs")
+                    _propdirs = ((PropDirSerializationItem[])propdirsSerializer.Deserialize(new MemoryStream(Encoding.UTF8.GetBytes(((JValue)property.Value).ToString())))).ToDictionary(i => i.name, i => i.value);
+                else
+                    _properties.Add(property.Name, property.Value);
+            }
         }
 
         public override IEnumerable<string> GetDynamicMemberNames()
@@ -92,9 +111,15 @@
         [SecurityPermissionAttribute(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
+            var propdirsSerializer = new XmlSerializer(typeof(PropDirSerializationItem[]), new XmlRootAttribute() { ElementName = "propdir" });
+
             foreach (var key in _properties.Keys)
                 if (!_serializeSkipProperties.Contains(key))
                     info.AddValue(key, _properties[key]);
+
+            var ms = new MemoryStream();
+            propdirsSerializer.Serialize(ms, _propdirs.Select(kv => new PropDirSerializationItem() { name = kv.Key, value = kv.Value }).ToArray());
+            info.AddValue("_propdirs", Encoding.UTF8.GetString(ms.ToArray()));
         }
     }
 }

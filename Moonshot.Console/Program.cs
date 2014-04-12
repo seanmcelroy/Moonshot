@@ -5,7 +5,10 @@ namespace Moonshot.Console
     using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
+    using System.Net.Mime;
     using System.Reflection;
+    using System.Text.RegularExpressions;
+
     using csscript;
     using CSScriptLibrary;
     using Moonshot.Common;
@@ -17,6 +20,7 @@ namespace Moonshot.Console
 
         public static void Main()
         {
+            SetupThings();
             SetupVerbs();
 
             while (true)
@@ -45,6 +49,17 @@ namespace Moonshot.Console
                 else
                     Console.WriteLine("Huh?");
             }
+        }
+
+        private static void SetupThings()
+        {
+            dynamic theVoid = new Thing("000001");
+            theVoid.name = "The Void";
+            Things.Add(theVoid.Id, theVoid);
+
+            dynamic player = new Thing("000002");
+            player.name = "God";
+            Things.Add(player.Id, player);
         }
 
         private static void SetupVerbs()
@@ -111,11 +126,41 @@ namespace Moonshot.Console
                 ProgramUtility.CreateInternalProgram(
                     s =>
                         {
+                            if (!Things.ContainsKey(s[0].ToLowerInvariant()))
+                            {
+                                Console.WriteLine("Object {0} not found", s[0]);
+                                return null;
+                            }
+
                             var thing = Things[s[0].ToLowerInvariant()];
                             var serial = JsonConvert.SerializeObject(thing);
                             Console.WriteLine(serial);
                             var thing2 = JsonConvert.DeserializeObject<Thing>(serial);
                             return thing2;
+                        }));
+
+            Things.Add(
+                "@set",
+                ProgramUtility.CreateInternalProgram(
+                    s =>
+                        {
+                            var body = s.Skip(1).Aggregate((c, n) => c + ' ' + n);
+                            var match = Regex.Match(body, @"(?<object>[\d\w]+)\s*=\s*(?<property>[\d\w]+)?");
+                            if (!match.Success) Console.WriteLine("I don't recognize that form of the command.");
+                            {
+
+                            }
+
+                            return null;
+                        }));
+
+            Things.Add(
+                "@shutdown",
+                ProgramUtility.CreateInternalProgram(
+                    s =>
+                        {
+                            Environment.Exit(0);
+                            return null;
                         }));
 
             Things.Add(
