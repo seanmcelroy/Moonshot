@@ -1,5 +1,6 @@
 ﻿namespace Moonshot.Common
 {
+    using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
     using System.Dynamic;
@@ -9,8 +10,6 @@
     using System.Security.Permissions;
     using System.Text;
     using System.Xml.Serialization;
-
-    using Newtonsoft.Json.Linq;
 
     [Serializable]
     public class Thing : DynamicObject, ISerializable, IDynamicMetaObjectProvider
@@ -22,8 +21,8 @@
                                                             'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
                                                         };
 
-        private static readonly string[] _readonlyProperties = { "id" };
-        private static readonly string[] _serializeSkipProperties = { "impl" };
+        private static readonly string[] _readonlyProperties = { "dirty", "id" };
+        private static readonly string[] _serializeSkipProperties = { "dirty", "impl" };
         private static readonly string[] _writeonlyProperties = { "pass" };
         
         public virtual string Id
@@ -67,6 +66,7 @@
 
             _properties["id"] = id;
             _properties["owner"] = id; // I own myself.
+            _properties["dirty"] = true;
         }
 
         protected Thing(SerializationInfo info, StreamingContext context)
@@ -105,6 +105,7 @@
         {
             if (_readonlyProperties.Contains(binder.Name.ToLowerInvariant())) return false;
             _properties[binder.Name.ToLowerInvariant()] = value;
+            _properties["dirty"] = true;
             return true;
         }
 
@@ -120,6 +121,8 @@
             var ms = new MemoryStream();
             propdirsSerializer.Serialize(ms, _propdirs.Select(kv => new PropDirSerializationItem() { name = kv.Key, value = kv.Value }).ToArray());
             info.AddValue("_propdirs", Encoding.UTF8.GetString(ms.ToArray()));
+
+            _properties["dirty"] = false;
         }
     }
 }
